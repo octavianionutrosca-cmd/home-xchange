@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String    @id @default(cuid())
+  name           String
+  email          String    @unique
+  password       String
+  avatar         String?
+  bio            String?
+  location       String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  properties     Property[]
+  swipesMade     Swipe[]    @relation("SwipeMade")
+  swipesReceived Swipe[]    @relation("SwipeReceived")
+  matchesAsA     Match[]    @relation("MatchUserA")
+  matchesAsB     Match[]    @relation("MatchUserB")
+  messages       Message[]
+  reviews        Review[]   @relation("ReviewAuthor")
+  reviewsReceived Review[]  @relation("ReviewTarget")
+}
+
+model Property {
+  id            String   @id @default(cuid())
+  title         String
+  description   String
+  type          String   // apartment, house, villa, studio
+  address       String
+  city          String
+  country       String
+  latitude      Float?
+  longitude     Float?
+  bedrooms      Int
+  bathrooms     Int
+  maxGuests     Int
+  amenities     String   // JSON string array
+  images        String   // JSON string array
+  rating        Float    @default(0)
+  reviewCount   Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  availability  Availability[]
+  swipes        Swipe[]
+  matchesAsA    Match[] @relation("MatchPropertyA")
+  matchesAsB    Match[] @relation("MatchPropertyB")
+  reviews       Review[]
+}
+
+model Availability {
+  id          String   @id @default(cuid())
+  startDate   DateTime
+  endDate     DateTime
+  isAvailable Boolean  @default(true)
+
+  propertyId  String
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+}
+
+model Swipe {
+  id          String   @id @default(cuid())
+  direction   String   // "like" or "pass"
+  createdAt   DateTime @default(now())
+
+  userId      String
+  user        User     @relation("SwipeMade", fields: [userId], references: [id], onDelete: Cascade)
+
+  targetUserId String
+  targetUser   User     @relation("SwipeReceived", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  propertyId  String
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, propertyId])
+}
+
+model Match {
+  id          String   @id @default(cuid())
+  status      String   @default("active") // active, completed, cancelled
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userAId     String
+  userA       User     @relation("MatchUserA", fields: [userAId], references: [id], onDelete: Cascade)
+
+  userBId     String
+  userB       User     @relation("MatchUserB", fields: [userBId], references: [id], onDelete: Cascade)
+
+  propertyAId String
+  propertyA   Property @relation("MatchPropertyA", fields: [propertyAId], references: [id], onDelete: Cascade)
+
+  propertyBId String
+  propertyB   Property @relation("MatchPropertyB", fields: [propertyBId], references: [id], onDelete: Cascade)
+
+  messages    Message[]
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  senderId  String
+  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  matchId   String
+  match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  rating    Int      // 1-5
+  comment   String
+  createdAt DateTime @default(now())
+
+  authorId  String
+  author    User     @relation("ReviewAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  targetId  String
+  target    User     @relation("ReviewTarget", fields: [targetId], references: [id], onDelete: Cascade)
+
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+}
